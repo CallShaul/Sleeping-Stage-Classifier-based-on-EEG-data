@@ -9,27 +9,36 @@ matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 
 
-#def s_stage(PSD, REM, KP, SP):
+def prepare_mat(PSD, REM, KC, SP, GT):
 
-    #  PSD: Delta, Theta, Alpha, Beta
-    # Wake: Beta + Alpha
-    # S1: Low amplitude Theta + some alpha
-    # S2: Intermediate amplitude Theta + Rare alpha + Spindles + K-complex
-    # S3: High amplitude Delta + Spindles
-    # REM: Theta + Some lower freq alpha
+    res = np.zeros((len(GT), 8))  # create results array
+    res[:, 0:4] = PSD[0:len(GT), :]
+    res[:, 4] = REM[0:len(GT), 0] + REM[0:len(GT), 1]
+    res[:, 5] = KC[0:len(GT), :].reshape(len(GT))
+    res[:, 6] = SP[0:len(GT), :].reshape(len(GT))
+    res[:, 7] = GT[0:len(GT), 1]
+
+    return res
 
 
-def plot_hypnogram(GT):
+def plot_hypnogram(GT, res):
 
     fig = plt.figure()
     fig.suptitle('Hypnogram', fontsize=14)
 
     ax1 = fig.add_subplot(121)
-    ax1.plot(GT[:, 0], GT[:, 1])
+    ax1.bar(np.linspace(0, len(GT), len(GT)), GT[:, 0], width=1, color='b')
+    #ax1.plot(np.linspace(0, len(GT), len(GT)), GT[:, 0])
     ax1.set_ylabel('Sleeping stage')
     ax1.set_xlabel('Epoch #')
     ax1.legend(['Ground trouth'])
 
+    ax2 = fig.add_subplot(122)
+    ax2.bar(np.linspace(0, len(res), len(res)), res[:, 0], width=1, color='b')
+    #ax2.plot(np.linspace(0, len(res), len(res)), res[:, 0])
+    ax2.set_ylabel('Sleeping stage')
+    ax2.set_xlabel('Epoch #')
+    ax2.legend(['Results'])
 
 
 def spindle(sig, fs, epoch, spindle_thresh, folder):
@@ -38,14 +47,14 @@ def spindle(sig, fs, epoch, spindle_thresh, folder):
         channels = sig.shape[1]  # number of channels recieved
     else:
         channels = 1
-        sig = sig[..., np.newaxis]  # adds another dimension in case there isn't another one
+        sig = sig.reshape(-1, 1)  # makes sig a proper column vector
 
     sos = sg.butter(6, np.array([9, 16]) / (100 / 2), btype='band',
                     output='sos')  # prepare butterworth LPF parameters at 4 Hz cut-off frq.
     sig = sg.sosfiltfilt(sos, sig, axis=0)  # perform LPF
     
     l = len(sig)
-    SP_raw = np.zeros((int(np.round(l / (epoch * fs))) + 1, channels))
+    SP_raw = np.zeros((int(np.round(l / (epoch * fs))) + 1, channels))  # create results array
     spindle_ref_temp = sio.loadmat(folder + 'spindle_ref.mat')  # loading referance signal mat file
     spindle_ref = spindle_ref_temp['spindle_ref']  # loading K-complex normilized referance signal's data
     sig = sig * -1  # signal's DC voltage direction is opposite! this needs to be fixed.
@@ -104,7 +113,7 @@ def k_complex(sig, fs, epoch, KC_thresh, folder):
     sos = sg.butter(6, 4 / (100 / 2), btype='low', output='sos')  # prepare butterworth LPF parameters at 4 Hz cut-off frq.
     sig = sg.sosfiltfilt(sos, sig, axis=0)  # perform LPF
     l = len(sig)
-    KC_raw = np.zeros((int(np.round(l / (epoch * fs))) + 1, channels))
+    KC_raw = np.zeros((int(np.round(l / (epoch * fs))) + 1, channels))  # create results array
     KC_ref_temp = sio.loadmat(folder + 'k_complex_ref.mat')  # loading referance signal mat file
     KC_ref = KC_ref_temp['KC_ref']  # loading K-complex normilized referance signal's data
     sig = sig*-1  # signal's DC voltage direction is opposite! this needs to be fixed.
