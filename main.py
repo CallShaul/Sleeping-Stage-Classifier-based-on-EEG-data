@@ -1,56 +1,53 @@
 import scipy.io as sio
-import numpy as np
-from scipy import signal as sg
-import time
 import funcs as fc
 from importlib import reload
 
-
-start_time = time.time()
 folder = 'C:/Users/saul6/Documents/Electrooptical Eng/Brain waves signal processing/Asignment/10studies/python/data/'
-#file = ["02", "05", "07", "08", "10", "15", "18", "20", "23", "25"]
-#file = ["02", "05", "07", "08", "10", "15", "18"]  # train
-file = ["20", "23", "25"]  # test
-#file = ["07"]
+# files = ["02", "05", "07", "08", "10", "15", "18", "20", "23", "25"]  # all
 
-for file_num in file:
-    path = folder + '26' + file_num + '_py.mat'
-    raw_data = sio.loadmat(path)
-    GT = raw_data['GT']  # Ground trouth
-    sos = sg.butter(6, 99.99/(200/2), btype="low", output='sos')    # prepare butterworth filter to down-sample signal by factor of 2 (from 200Hz to 100Hz)
-    sig = sg.sosfiltfilt(sos, raw_data['data_200hz'], axis=0)[::2]  # perform LPF and then down-sample signal to 100 Hz
+KC_thresh = 40
+SP_thresh = 15
+epoch = 30
+trainORtest = "train"  ##########################-- choose run mode here --########################
 
-    KC_thresh = 40  # [uV]
-    spindle_thresh = 15  # [uV]
-    epoch = 30  # each segment length [sec]
-    fs = 100  # sampling rate [Hz]
+if trainORtest == "train":
 
-    PSD = fc.power_calc(sig[:, 0:6], fs, epoch, low=0.5, high=3.5, avg=True)  # Delta waves PSD
-    PSD = np.append(PSD, fc.power_calc(sig[:, 0:6], fs, epoch, low=4, high=7, avg=True), axis=1)  # Theta waves PSD
-    PSD = np.append(PSD, fc.power_calc(sig[:, 0:6], fs, epoch, low=7.5, high=12, avg=True), axis=1)  # Alpha waves PSD
-    PSD = np.append(PSD, fc.power_calc(sig[:, 0:6], fs, epoch, low=15.5, high=30, avg=True), axis=1)  # Beta waves PSD
+    files = ["05", "07", "08", "15", "18", "23", "25"]  # train
+    trained_features = fc.analyze_data(folder, files, KC_thresh, SP_thresh, epoch, save=True, plot=True)
 
-    REM = fc.REM_finder(sig[:, 7:9], fs, epoch)  # calculate left & right eyes signal power in epochs
+    #sio.savemat('train.mat', {'res': trained_features, 'KC_thresh': KC_thresh, 'SP_thresh': SP_thresh, 'epoch': epoch})  # save results to file to create train data
 
-    KC_raw, KC = fc.k_complex(sig[:, 0:6], fs, epoch, KC_thresh, folder)  # calculates K-complex activity
+    #clf = fc.SVM_train(features)  # use calculated features to create clf
 
-    SP_raw, SP = fc.spindle(sig[:, 0:6], fs, epoch, spindle_thresh, folder)  # calculates spindle activity
+elif trainORtest == "test":
 
-    if 'res' in locals():  # checks if res exists
-        res = np.append(res, fc.prepare_mat(PSD, REM, KC, SP, GT), axis=0)  # creates res at first itteration
-    else:
-        res = fc.prepare_mat(PSD, REM, KC, SP, GT)  # if res doesn't exist- create it
+    files = ["20"]
+    #files = ["02", "10", "20"]  # test
+    features = fc.analyze_data(folder, files, KC_thresh, SP_thresh, epoch, save=True, plot=True)
 
-    #results = fc.s_stage(PSD, REM, KC, SP)
+    trained_features = sio.loadmat('train.mat')['res']  # load trained data
 
-    #fc = reload(fc)
-    fc.plot_hypnogram(GT[:, 1])
+    clf = fc.SVM_train(trained_features)  # use calculated features to create clf
+    hyp = fc.SVM_test(clf, file="20", plot=True)  # use clf to estimate hypnogram
 
-    #fc = reload(fc)
-    #fc.plotit(PSD, REM, KC, SP)  # prints results graphs
+else:
 
-    sio.savemat(file_num + '.mat', {'res':res})  # save results to file
+    dat = sio.loadmat('25.mat')['res']  # load data file
+    fc.plotit('25', dat)  # plots all features
 
-    print('Done processing and saving file ', file_num)
 
-print("Process took %s seconds." % np.round(time.time() - start_time))
+"""
+dat = sio.loadmat(folder + '2602_py.mat')['data_10hz']
+
+dat = sio.loadmat('20.mat')['res']
+
+# fc = reload(fc)
+
+# Wake: Beta + Alpha (0)
+# S1: Low amplitude Theta + some alpha (1)
+# S2: Intermediate amplitude Theta + Rare alpha + Spindles + K-complex (2)
+# S3: High amplitude Delta + Spindles (3)
+# REM: Theta + Some lower freq alpha (5)
+
+
+"""
