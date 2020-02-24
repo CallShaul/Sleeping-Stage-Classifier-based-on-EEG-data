@@ -2,13 +2,13 @@ import scipy.io as sio
 import funcs as fc
 from importlib import reload
 
-folder = 'C:/Users/saul6/Documents/Electrooptical Eng/Brain waves signal processing/Asignment/10studies/python/data/'
+folder = 'C:/Users/saul6/Documents/Electrooptical Eng/Brain waves signal processing/Asignment/python/data/'
 # files = ["02", "05", "07", "08", "10", "15", "18", "20", "23", "25"]  # all
 
 KC_thresh = 40
 SP_thresh = 15
 epoch = 30
-trainORtest = "train"  ##########################-- choose run mode here --########################
+trainORtest = "test"  ##########################-- choose run mode here --########################
 
 if trainORtest == "train":
 
@@ -23,12 +23,13 @@ elif trainORtest == "test":
 
     files = ["20"]
     #files = ["02", "10", "20"]  # test
-    features = fc.analyze_data(folder, files, KC_thresh, SP_thresh, epoch, save=True, plot=True)
+    #features = fc.analyze_data(folder, files, KC_thresh, SP_thresh, epoch, save=False, plot=False)
 
     trained_features = sio.loadmat('train.mat')['res']  # load trained data
 
     clf = fc.SVM_train(trained_features)  # use calculated features to create clf
-    hyp = fc.SVM_test(clf, file="20", plot=True)  # use clf to estimate hypnogram
+
+    hyp = fc.SVM_test(clf, file="02", plot=True)  # use clf to estimate hypnogram
 
 else:
 

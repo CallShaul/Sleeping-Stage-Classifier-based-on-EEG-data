@@ -3,6 +3,7 @@ from scipy import signal as sg
 import scipy.io as sio
 from scipy.signal import welch
 from scipy.integrate import simps
+from scipy.signal import savgol_filter
 from mne.time_frequency import psd_array_multitaper
 import matplotlib
 import time
@@ -424,6 +425,19 @@ def plotit(file, res):
     plt.show()
 
 
+def hypno(dat):
+
+    hyp = np.zeros(dat.shape)
+
+    hyp[dat == 0] = 5  # change values to real hypnogram values
+    hyp[dat == 3] = 1
+    hyp[dat == 2] = 2
+    hyp[dat == 1] = 3
+    hyp[dat == 5] = 4
+
+    return hyp
+
+
 def plot_hypnogram(GT, res, file):
 
     l = len(GT)
@@ -431,9 +445,25 @@ def plot_hypnogram(GT, res, file):
     err[err > 0] = 1  # every miss counts the same (as one)
     err_ratio = str(np.round(np.uint16(np.sum(err)) * 100 / l, decimals=1))  # calculate error precentage
 
+    hyp_GT = hypno(GT[:, 0])
+    hyp_res = hypno(res[:, 0])
+
     fig = plt.figure()
     fig.suptitle('26' + file + ' - Hypnogram, error: ' + err_ratio + ' %', fontsize=14)
 
+    ax1 = fig.add_subplot(121)
+    ax1.bar(np.linspace(0, l / 2, l), hyp_GT, width=1, color='b')
+    ax1.set_ylabel('Sleeping stage')
+    ax1.set_xlabel('Time [Min]')
+    ax1.legend(['Ground trouth'])
+
+    ax2 = fig.add_subplot(122)
+    ax2.bar(np.linspace(0, l / 2, l), hyp_res, width=1, color='b')
+    ax2.set_ylabel('Sleeping stage')
+    ax2.set_xlabel('Time [Min]')
+    ax2.legend(['Calculated results'])
+
+    '''
     ax1 = fig.add_subplot(121)
     ax1.bar(np.linspace(0, l / 2, l), GT[:, 0], width=1, color='b')
     #ax1.plot(np.linspace(0, len(GT), len(GT)), GT[:, 0])
@@ -447,5 +477,5 @@ def plot_hypnogram(GT, res, file):
     ax2.set_ylabel('Sleeping stage')
     ax2.set_xlabel('Time [Min]')
     ax2.legend(['Calculated results'])
-
+    '''
 
